@@ -1,16 +1,12 @@
 from __future__ import print_function
 import string
 import operator
-from pathlib import Path
-from flask import Flask, render_template, request
-import speech_recognition as sr
-from gtts import gTTS
-import os
 
 # Natural Language Processing Libraries
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk.corpus import stopwords
+from flask import Flask, render_template, request
 
 class Summarizer:
     def get_summary(self, input_text, max_sentences):
@@ -27,7 +23,10 @@ class Summarizer:
         # Calculate word frequency
         word_frequency = {}
         for w in filtered_words:
-            word_frequency[w] = word_frequency.get(w, 0) + 1
+            if w in word_frequency:
+                word_frequency[w] += 1.0
+            else:
+                word_frequency[w] = 1.0
 
         # Calculate weighted frequency values
         for word in word_frequency:
@@ -62,33 +61,10 @@ def home():
         summarizer = Summarizer()
         summary = summarizer.get_summary(text, num_sentences)
         
-        # Join summary sentences to form a single string for TTS
-        summary_text = ' '.join(summary)
-
-        # Convert summary to speech
-        speech_file_path = Path(__file__).parent / "speech.mp3"
-        tts = gTTS(text=summary_text, lang='en')
-        tts.save(speech_file_path)
-
-        return render_template("index.html", title=title, original_text=text, output_summary=summary, audio_file=speech_file_path.name)
+        return render_template("index.html", title=title, original_text=text, output_summary=summary)
     else:
         title = "Text Summarizer"
         return render_template("index.html", title=title)
 
-@app.route('/voice', methods=['POST'])
-def voice_to_text():
-    recognizer = sr.Recognizer()
-    with sr.Microphone() as source:
-        print("Listening...")
-        audio = recognizer.listen(source)
-        
-    try:
-        voice_text = recognizer.recognize_google(audio)
-        return {'voice_text': voice_text}
-    except sr.UnknownValueError:
-        return {'error': 'Could not understand audio'}, 400
-    except sr.RequestError as e:
-        return {'error': f'Could not request results; {e}'}, 500
-
 if __name__ == "__main__":
-    app.run(debug=False, host = "0.0.0.0")
+    app.run(debug=True)
